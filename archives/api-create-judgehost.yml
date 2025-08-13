@@ -1,0 +1,72 @@
+---
+- name: Generate restapi.secret on judgehost
+  hosts: judgehosts
+  become: yes
+  vars:
+    domjudge_dir: /opt/domjudge
+
+  tasks:
+
+    - name: Extract existing judgehost password from restapi.secret (if present)
+      ansible.builtin.shell: |
+        cat {{ domjudge_dir }}/judgehost/etc/restapi.secret | awk '{print $4}' | tail -n 1
+      register: existing_password
+      changed_when: false
+      failed_when: false
+
+    - name: Set judgehost_password fact (default if not found)
+      ansible.builtin.set_fact:
+        judgehost_password: "{{ existing_password.stdout }}"
+
+    - name: Read initial admin password from domserver
+      ansible.builtin.command: cat /opt/domjudge/domserver/etc/initial_admin_password.secret
+      delegate_to: "{{ groups['domserver'][0] }}"
+      register: admin_password_raw
+      run_once: true
+
+    - name: Set admin_password fact
+      ansible.builtin.set_fact:
+        admin_password: "{{ admin_password_raw.stdout | trim }}"
+
+    - name: Register judgehost via API on domserver
+       ansible.builtin.uri:
+         url: "http://{{ groups['domserver'][0] }}/domjudge/api/v4/judgehosts"
+         method: POST
+         user: admin
+         password: "{{ admin_password }}"
+         force_basic_auth: yes
+         headers:
+           Content-Type: "application/json"
+         body_format: json
+         body: |
+           {
+             "hostname": "judgehost_{{ ansible_hostname }}",
+             "password": "{{ judgehost_password }}"
+           }
+         status_code: 200
+
+    - name: Create DOMjudge user via API
+      ansible.builtin.uri:
+        url: "http://147.32.82.181/domjudge/api/v4/users"
+        method: POST
+        user: admin
+        password: "{{ admin_password }}"
+        force_basic_auth: yes
+        headers:
+          Content-Type: "application/json"
+        body: |
+          {
+            "username": "judgehost_{{ ansible_hostname }}",
+            "name": "judgehost_{{ ansible_hostname }}",
+            "password": "{{ judgehost_password }}",
+            "roles": ["judgehost"],
+            "enabled": true
+          }
+        body_format: json
+        status_code: 201
+      register: create_user_response
+
+    - name: debug
+      debug:
+        var: create_user_response.json
+

@@ -1,0 +1,41 @@
+---
+
+- name: Debug PHP's version
+  debug:
+    msg: "Version php : {{ php_version }}"
+
+- name: Create the python env
+  ansible.builtin.command: python3 -m venv {{ domjudge_install }}/venv
+  args:
+    chdir: "{{ domjudge_install }}"
+    creates: "{{ domjudge_install }}/venv"
+
+- name: Install pip packages in venv
+ ansible.builtin.pip:
+    name:
+      - sphinx
+      - sphinx_rtd_theme
+      - PyYAML
+    virtualenv: "{{ domjudge_install }}/venv"
+
+- name: Launch bootstrap (outside venv)
+  ansible.builtin.command: ./bootstrap
+  args:
+    chdir: "{{ domjudge_install }}"
+
+- name: Run bootstrap with venv activated
+  ansible.builtin.shell: |
+    source {{ domjudge_install }}/venv/bin/activate
+    ./bootstrap
+  args:
+    chdir: "{{ domjudge_install }}"
+    executable: /bin/bash
+
+- name: Install required Python packages globally
+  ansible.builtin.pip:
+    name:
+      - sphinx
+      - sphinx_rtd_theme
+      - PyYAML
+    executable: pip3
+    extra_args: --break-system-packages

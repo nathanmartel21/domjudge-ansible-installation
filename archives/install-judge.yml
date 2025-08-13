@@ -1,0 +1,6 @@
+---
+
+- name: Run dj_make_chroot script
+  ansible.builtin.command: judgehost/bin/dj_make_chroot
+  args:
+    chdir: "{{ domjudge_dir }}"

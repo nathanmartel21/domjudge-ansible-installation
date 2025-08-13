@@ -1,0 +1,35 @@
+---
+- name: Setup DOMjudge judgedaemon sudoers and dev dir
+  hosts: judgehosts
+  become: yes
+
+  vars:
+    judgedaemon_base_dir: "/opt/domjudge/judgehost"
+    sudoers_file: "/etc/sudoers.d/icpc-user"
+  
+  tasks:
+    - name: Create dev directory in judgedaemon base dir
+      file:
+        path: "{{ judgedaemon_base_dir }}/dev"
+        state: directory
+        owner: icpc-user
+        group: icpc-user
+        mode: '0755'
+
+    - name: Configure sudoers for icpc-user
+      copy:
+        dest: "{{ sudoers_file }}"
+        content: |
+          icpc-user ALL=(ALL) NOPASSWD: /usr/bin/cp
+          icpc-user ALL=(ALL) NOPASSWD: /usr/bin/mount
+          icpc-user ALL=(ALL) NOPASSWD: /usr/bin/umount
+        owner: root
+        group: root
+        mode: '0440'
+
+    - name: Validate sudoers file syntax
+      command: visudo -cf "{{ sudoers_file }}"
+      register: visudo_check
+      failed_when: visudo_check.rc != 0
+
+

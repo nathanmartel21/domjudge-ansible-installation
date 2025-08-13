@@ -1,0 +1,29 @@
+---
+- name: Generate restapi.secret on judgehost
+  hosts: judgehosts
+  become: yes
+  vars:
+    domjudge_dir: /opt/domjudge
+
+  tasks:
+
+    - name: Extract existing judgehost password from restapi.secret (if present)
+      ansible.builtin.shell: |
+        cat {{ domjudge_dir }}/judgehost/etc/restapi.secret | awk '{print $4}' | tail -n 1
+      register: existing_password
+      changed_when: false
+      failed_when: false
+
+    - name: Set judgehost_password fact (default if not found)
+      ansible.builtin.set_fact:
+        judgehost_password: "{{ existing_password.stdout }}"
+
+    - name: Generate restapi.secret with unique judgehost ID
+      ansible.builtin.copy:
+        dest: "{{ domjudge_dir }}/judgehost/etc/restapi.secret"
+        content: |
+          judgehost_{{ ansible_hostname }} http://{{ groups['domserver'][0] }}/domjudge/api judgehost_{{ ansible_hostname }} {{ judgehost_password }}
+        owner: root
+        group: root
+        mode: '0600'
+

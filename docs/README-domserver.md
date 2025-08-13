@@ -28,7 +28,7 @@
 > ssh-copy-id <user>@<host>
 > ```
 >
-> > [!TIP]
+> > [!WARNING]
 > > Make sure you have configured both the SSH user and the SSH private key for ansible by setting these options in your `ansible.cfg` file:
 > > ```ini
 > > [defaults]

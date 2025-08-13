@@ -4,6 +4,8 @@
       This ansible role automates the <b>installation</b> of the DOMjudge <b>domserver</b> on a remote machine, with a default setup suitable for most use cases.
       </blockquote></td><td style="text-align: right;"><img src="img/DOMjudgelogo.svg" alt="DOMjudge Logo" height="140"></td></tr></table>
 
+---
+
 ## Remote access requirements
 
 > [!IMPORTANT]

@@ -1,0 +1,235 @@
+---
+
+- name: Update and upgrade apt packages
+  ansible.builtin.apt:
+    update_cache: yes
+    upgrade: dist
+
+- name: Install PHP (default version)
+  ansible.builtin.apt:
+    name: php
+    state: present
+
+- name: Retrieve the current version of PHP
+  ansible.builtin.command: php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;'
+  register: php_version_result
+  changed_when: false
+
+- name: Define the php_version variable
+  ansible.builtin.set_fact:
+    php_version: "{{ php_version_result.stdout }}"
+
+- name: Install the necessary dependencies
+  ansible.builtin.apt:
+    name:
+      - git
+      - build-essential
+      - "php{{ php_version }}"
+      - "php{{ php_version }}-mysql"
+      - "php{{ php_version }}-curl"
+      - "php{{ php_version }}-gd"
+      - "php{{ php_version }}-mbstring"
+      - "php{{ php_version }}-xml"
+      - "php{{ php_version }}-zip"
+      - "php{{ php_version }}-fpm"
+      - python3-sphinx
+      - python3-sphinx-rtd-theme
+      - python3-yaml
+      - python3-pymysql 
+      - latexmk
+      - texlive
+      - texlive-latex-extra
+      - texlive-fonts-recommended
+      - automake
+      - composer
+      - "php{{ php_version }}-bcmath"
+      - libcgroup-dev
+      - mariadb-server
+      - mariadb-client
+    state: present
+
+- name: Create folder for cloning
+  ansible.builtin.file:
+    path: "{{ domjudge_install }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Clone the domjudge repository
+  ansible.builtin.git:
+    repo: "https://github.com/domjudge/domjudge.git"
+    dest: "{{ domjudge_install }}"
+    force: yes
+  become: false
+
+- name: Run bootstrap
+  ansible.builtin.command: ./bootstrap
+  args:
+    chdir: "{{ domjudge_install }}"
+  become: false
+  ignore_errors: true
+
+- name: Configure DOMjudge
+  ansible.builtin.command: ./configure --prefix={{ domjudge_dir }} --with-baseurl={{ server_baseurl }}
+  args:
+    chdir: "{{ domjudge_install }}"
+  become: false
+
+- name: Compile domserver
+  ansible.builtin.make:
+    chdir: "{{ domjudge_install }}"
+    target: domserver
+  become: false
+
+- name: Install domserver
+  ansible.builtin.make:
+    chdir: "{{ domjudge_install }}"
+    target: install-domserver
+    params:
+      sudo: yes
+
+- name: Ensure MariaDB is started
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: yes
+
+- name: Set MariaDB root password
+  ansible.builtin.mysql_user:
+    name: root
+    host: localhost
+    password: "{{ db_root_password }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    check_implicit_admin: yes
+    column_case_sensitive: false
+  ignore_errors: true
+
+- name: Apply MySQL packet size
+  ansible.builtin.blockinfile:
+    path: /etc/mysql/conf.d/mysql.cnf
+    block: |
+      [mysql]
+      max_allowed_packet=256M
+
+- name: Restart MariaDB
+  ansible.builtin.service:
+    name: mariadb
+    state: restarted
+
+- name: Initialize DOMjudge database and generate password
+  ansible.builtin.command: domserver/bin/dj_setup_database genpass
+  args:
+    chdir: "{{ domjudge_dir }}"
+
+- name: Create DOMjudge DB users
+  ansible.builtin.command: domserver/bin/dj_setup_database -u root -p {{ db_root_password }} create-db-users
+  args:
+    chdir: "{{ domjudge_dir }}"
+
+- name: Install DOMjudge tables (bare-install / default)
+  ansible.builtin.command: domserver/bin/dj_setup_database -u root -p {{ db_root_password }} bare-install
+  args:
+    chdir: "{{ domjudge_dir }}"
+  when: not install_demo_contest
+
+- name: Install DOMjudge tables (with demo data)
+  ansible.builtin.command: domserver/bin/dj_setup_database -u root -p {{ db_root_password }} install
+  args:
+    chdir: "{{ domjudge_dir }}"
+  when: install_demo_contest
+
+# --- Nginx installation ---
+
+- name: Install nginx webserver
+  ansible.builtin.apt:
+    name: 
+      - nginx
+      - apache2-utils
+    state: present
+  when: webserver == "nginx"
+
+- name: Remove default nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  when: webserver == "nginx"
+
+- name: Create symbolic link nginx configuration
+  ansible.builtin.file:
+    src: "{{ domjudge_dir }}/domserver/etc/nginx-conf"
+    dest: /etc/nginx/sites-enabled/domjudge
+    state: link
+    force: yes
+  when: webserver == "nginx"
+
+# --- Apache2 installation ---
+
+- name: Install apache2 webserver
+  ansible.builtin.apt:
+    name: apache2
+    state: present
+  when: webserver == "apache"
+
+- name: Create symbolic link apache configuration
+  ansible.builtin.file:
+    src: "{{ domjudge_dir }}/domserver/etc/apache.conf"
+    dest: /etc/apache2/conf-available/domjudge.conf
+    state: link
+    force: yes
+  when: webserver == "apache"
+
+- name: Create symbolic link php-fpm configuration
+  ansible.builtin.file:
+    src: "{{ domjudge_dir }}/domserver/etc/domjudge-fpm.conf"
+    dest: "/etc/php/{{ php_version }}/fpm/pool.d/domjudge.conf"
+    state: link
+    force: yes
+
+- name: Ensure apache2 is stopped and disabled when using nginx
+  ansible.builtin.service:
+    name: apache2
+    state: stopped
+    enabled: no
+  when: webserver == "nginx"
+  ignore_errors: true
+
+- name: Ensure nginx is stopped and disabled when using apache
+  ansible.builtin.service:
+    name: nginx
+    state: stopped
+    enabled: no
+  when: webserver == "apache"
+  ignore_errors: true
+
+- name: Reload php-fpm
+  ansible.builtin.service:
+    name: "php{{ php_version }}-fpm"
+    state: reloaded
+
+- name: Reload apache2
+  ansible.builtin.service:
+    name: apache2
+    state: reloaded
+  when: webserver == "apache"
+
+- name: Reload nginx
+  ansible.builtin.service:
+    name: nginx
+    state: reloaded
+  when: webserver == "nginx"
+
+- name: Enable necessary apache modules
+  ansible.builtin.shell: |
+    a2enmod proxy_fcgi setenvif rewrite
+    a2enconf php{{ php_version }}-fpm domjudge
+  args:
+    executable: /bin/bash
+  when: webserver == "apache"
+
+- name: Restart apache2
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+  when: webserver == "apache"
+

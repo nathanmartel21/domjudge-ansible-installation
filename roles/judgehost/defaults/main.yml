@@ -1,0 +1,8 @@
+domjudge_dir: /opt/domjudge
+domjudge_install: /home/domjudge-repo
+domserver_ip: "{{ hostvars[groups['domserver'][0]]['ansible_host'] | default(groups['domserver'][0]) }}"
+sudoers_file: "/etc/sudoers.d/{{ ansible_user }}"
+
+# Placeholder (example varies by install) :
+
+judgehost_cpu_core: 2

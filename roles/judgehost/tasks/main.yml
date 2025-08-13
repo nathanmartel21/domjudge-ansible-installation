@@ -1,0 +1,223 @@
+---
+
+- name: Update and upgrade apt packages
+  ansible.builtin.apt:
+    update_cache: yes
+    upgrade: dist
+
+- name: Install PHP (default version)
+  ansible.builtin.apt:
+    name: php
+    state: present
+
+- name: Retrieve the current version of PHP
+  ansible.builtin.command: php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;'
+  register: php_version_result
+  changed_when: false
+
+- name: Define the php_version variable
+  ansible.builtin.set_fact:
+    php_version: "{{ php_version_result.stdout }}"
+
+- name: Remove the apport package
+  ansible.builtin.apt:
+    name: apport
+    state: absent
+
+- name: Install the necessary dependencies
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      - build-essential
+      - python3-sphinx
+      - python3-sphinx-rtd-theme
+      - python3-yaml
+      - latexmk
+      - texlive
+      - texlive-latex-extra
+      - texlive-fonts-recommended
+      - automake
+      - composer
+      - "php{{ php_version }}-bcmath"
+      - "php{{ php_version }}-gd"
+      - "php{{ php_version }}-mysql"
+      - "php{{ php_version }}-curl"
+      - "php{{ php_version }}-xml"
+      - "php{{ php_version }}-zip"
+      - "php{{ php_version }}-dom"
+      - "php{{ php_version }}-simplexml"
+      - libcgroup-dev
+
+- name: Create folder for cloning
+  ansible.builtin.file:
+    path: "{{ domjudge_install }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Clone the domjudge repository
+  ansible.builtin.git:
+    repo: "https://github.com/domjudge/domjudge.git"
+    dest: "{{ domjudge_install }}"
+    force: yes
+  become: false
+
+- name: Run bootstrap
+  ansible.builtin.command: ./bootstrap
+  args:
+    chdir: "{{ domjudge_install }}"
+  become: false
+  ignore_errors: true
+
+- name: Configure DOMjudge
+  ansible.builtin.command: ./configure --prefix={{ domjudge_dir }}
+  args:
+    chdir: "{{ domjudge_install }}"
+  become: false
+
+- name: Compile judgehost
+  ansible.builtin.make:
+    chdir: "{{ domjudge_install }}"
+    target: judgehost
+  become: false
+
+- name: Install judgehost
+  ansible.builtin.make:
+    chdir: "{{ domjudge_install }}"
+    target: install-judgehost
+    params:
+      sudo: yes
+
+- name: Copy domjudge-judgedaemon@.service from source to /etc/systemd/system/
+  ansible.builtin.copy:
+    src: "{{ domjudge_install }}/judge/domjudge-judgedaemon@.service"
+    dest: /etc/systemd/system/domjudge-judgedaemon@.service
+    mode: '0644'
+    remote_src: true
+
+- name: Copy create-cgroups.service to /etc/systemd/system/
+  ansible.builtin.copy:
+    src: "{{ domjudge_install }}/judge/create-cgroups.service"
+    dest: /etc/systemd/system/create-cgroups.service
+    mode: '0644'
+    remote_src: true
+
+- name: Enable and start create-cgroups.service
+  ansible.builtin.systemd:
+    name: create-cgroups.service
+    enabled: true
+    state: started
+    daemon_reload: yes
+
+- name: Ensure group domjudge-run exists
+  ansible.builtin.group:
+    name: domjudge-run
+    state: present
+
+- name: Check if requested CPU core exists
+  ansible.builtin.command: cat /sys/devices/system/cpu/online
+  register: cpu_online_range
+  changed_when: false
+
+- name: Fail if requested CPU core is not online
+  ansible.builtin.fail:
+    msg: "CPU core {{ judgehost_cpu_core }} is not available. Available range: {{ cpu_online_range.stdout }}"
+  when: judgehost_cpu_core | int not in range((cpu_online_range.stdout.split('-')[0] | int), (cpu_online_range.stdout.split('-')[1] | int + 1))
+
+- name: Ensure user domjudge-run-{{ judgehost_cpu_core }} exists with no home directory and no login shell
+  ansible.builtin.user:
+    name: "domjudge-run-{{ judgehost_cpu_core }}"
+    group: domjudge-run
+    home: /nonexistent
+    shell: /bin/false
+    create_home: no
+    state: present
+
+- name: Run dj_make_chroot script 
+  ansible.builtin.command: judgehost/bin/dj_make_chroot -y
+  args:
+    chdir: "{{ domjudge_dir }}"
+  register: chroot_creation
+  changed_when: "'created' in chroot_creation.stdout or 'replaced' in chroot_creation.stdout"
+
+- name: Extract existing judgehost password from restapi.secret (if present)
+  ansible.builtin.shell: |
+    cat {{ domjudge_dir }}/judgehost/etc/restapi.secret | awk '{print $4}' | tail -n 1
+  register: existing_password
+  changed_when: false
+  failed_when: false
+
+- name: Set judgehost_password fact (default if not found)
+  ansible.builtin.set_fact:
+    judgehost_password: "{{ existing_password.stdout }}"
+
+- name: Generate restapi.secret with unique judgehost ID (identified by remote hostname)
+  ansible.builtin.copy:
+    dest: "{{ domjudge_dir }}/judgehost/etc/restapi.secret"
+    content: |
+      judgehost_{{ ansible_hostname }} http://{{ domserver_ip }}/domjudge/api judgehost_{{ ansible_hostname }} {{ judgehost_password }}
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Read initial admin password from domserver
+  ansible.builtin.command: cat {{ domjudge_dir }}/domserver/etc/initial_admin_password.secret
+  delegate_to: "{{ domserver_ip }}"
+  register: admin_password_raw
+  run_once: true
+
+- name: Set admin_password fact
+  ansible.builtin.set_fact:
+    admin_password: "{{ admin_password_raw.stdout | trim }}"
+
+- name: Create DOMjudge user via API
+  ansible.builtin.uri:
+    url: "http://{{ domserver_ip }}/domjudge/api/v4/users"
+    method: POST
+    user: admin
+    password: "{{ admin_password }}"
+    force_basic_auth: yes
+    headers:
+      Content-Type: "application/json"
+    body: |
+      {
+        "username": "judgehost_{{ ansible_hostname }}",
+        "name": "judgehost_{{ ansible_hostname }}",
+        "password": "{{ judgehost_password }}",
+        "roles": ["judgehost"],
+        "enabled": true
+      }
+    body_format: json
+    status_code: 201
+
+- name: Create dev directory in judgedaemon base dir
+  ansible.builtin.file:
+    path: "{{ domjudge_dir }}/judgehost/dev"
+    state: directory
+    owner: icpc-user
+    group: icpc-user
+    mode: '0755'
+
+- name: Configure sudoers for icpc-user
+  ansible.builtin.copy:
+    dest: "{{ sudoers_file }}"
+    content: |
+      icpc-user ALL=(ALL) NOPASSWD: /usr/bin/cp
+      icpc-user ALL=(ALL) NOPASSWD: /usr/bin/mount
+      icpc-user ALL=(ALL) NOPASSWD: /usr/bin/umount
+    owner: root
+    group: root
+    mode: '0440'
+
+- name: Validate sudoers file syntax
+  ansible.builtin.command: visudo -cf "{{ sudoers_file }}"
+  register: visudo_check
+  failed_when: visudo_check.rc != 0
+
+- name: Start domjudge-judgedaemon@ service from /chroot/domjudge/dev
+  ansible.builtin.command: "systemctl start domjudge-judgedaemon@{{ judgehost_cpu_core }}"
+  args:
+    chdir: /chroot/domjudge/dev
+

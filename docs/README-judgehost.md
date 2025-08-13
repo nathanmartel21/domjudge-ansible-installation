@@ -1,19 +1,8 @@
 # DOMjudge Judgehost role installation
 
-<table>
-  <tr>
-    <td style="width: 100%; padding: 0; height: 120px;">
-      <table style="width:100%; height:120px;"><tr><td style="vertical-align:middle;">
-        <blockquote style="margin: 0;">
-          This ansible role automates the <b>installation</b> of a DOMjudge <b>judgehost</b> on a remote machine, and connects it to an existing <b>domserver</b> using the DOMjudge API.
-        </blockquote>
-      </td></tr></table>
-    </td>
-    <td style="text-align: right; vertical-align: middle;">
-      <img src="docs/img/DOMjudgelogo.svg" alt="DOMjudge Logo" height="100">
-    </td>
-  </tr>
-</table>
+<table><tr><td style="vertical-align: top; width: 70%;"><blockquote><strong>NOTE</strong><br>
+      This ansible role automates the <b>installation</b> of a DOMjudge <b>judgehost</b> on a remote machine, and connects it to an existing <b>domserver</b> using the DOMjudge API.
+      </blockquote></td><td style="text-align: right;"><img src="img/DOMjudgelogo.svg" alt="DOMjudge Logo" height="140"></td></tr></table>
 
 ---
 

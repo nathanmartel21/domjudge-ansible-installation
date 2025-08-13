@@ -15,6 +15,12 @@
   </tr>
 </table>
 
+<table><tr><td style="vertical-align: top; width: 70%;"><blockquote><strong>NOTE</strong><br>
+      This repository provides an <strong>Infrastructure as Code</strong> solution using <strong>ansible</strong> to automate the <strong>installation</strong> of <a href="https://www.domjudge.org/">DOMjudge</a> components: <strong>domserver</strong> and <strong>judgehosts</strong>.<br><br>
+      <strong>Only the installation is covered.</strong><br>
+      The configuration of DOMjudge (users, contests, problems, etc.) is <strong>not</strong> handled by this project.
+      </blockquote></td><td style="text-align: right;"><img src="img/DOMjudgelogo.svg" alt="DOMjudge Logo" height="140"></td></tr></table>
+
 ---
 
 ## Remote access requirements

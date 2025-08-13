@@ -1,0 +1,14 @@
+passwords/vault-pass.txt
+
+.vscode/
+
+*.tmp
+*.swp
+*~
+
+*.retry
+
+venv/
+.env/
+
+inventory/hosts.ini

@@ -1,0 +1,10 @@
+---
+
+- name: Install Judgehost
+  hosts: judgehosts
+  become: true
+  vars:
+    ansible_become_method: sudo
+
+  roles:
+    - role: judgehost

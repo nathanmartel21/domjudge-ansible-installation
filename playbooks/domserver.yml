@@ -1,0 +1,10 @@
+---
+
+- name: Install DOMserver
+  hosts: domserver
+  become: true
+  vars:
+    ansible_become_method: sudo
+
+  roles:
+    - role: domserver

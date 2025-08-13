@@ -10,7 +10,7 @@
       </td></tr></table>
     </td>
     <td style="text-align: right; vertical-align: middle;">
-      <img src="./img/DOMjudgelogo.svg" alt="DOMjudge Logo" height="1000">
+      <img src="./img/DOMjudgelogo.svg" alt="DOMjudge Logo" height="140">
     </td>
   </tr>
 </table>

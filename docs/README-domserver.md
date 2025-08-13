@@ -52,13 +52,13 @@ server_baseurl: "http://localhost" # change as needed
 
 - **db_root_password**: The MariaDB root password for the database hosting DOMjudge's data.  
   
-  > [!NOTE]
-  > **This password must be encrypted using ansible Vault.**  
-  > To generate an encrypted password, use:
-  > ```bash
-  > ansible-vault encrypt_string 'password_for_db' --name 'db_root_password'
-  > ```
-  > Remember to create the file `passwords/vault-pass.txt` with the password used to encrypt the string.
+> [!NOTE]
+> **This password must be encrypted using ansible Vault.**  
+> To generate an encrypted password, use:
+> ```bash
+> ansible-vault encrypt_string 'password_for_db' --name 'db_root_password'
+> ```
+> Remember to create the file `passwords/vault-pass.txt` with the password used to encrypt the string.
 
 - **install_demo_contest**: Whether to import (`true`) or skip (`false`) demo/test data on the domserver.
 

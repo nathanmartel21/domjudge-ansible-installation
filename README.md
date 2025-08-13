@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/nathanmartel21/domjudge-ansible-installation/commits/main">
-    <img alt="workflow status" src="https://github.com/nathanmartel21/domjudge-ansible-installation/actions/workflows/lint.yml/badge.svg" />
+    <img src="https://github.com/nathanmartel21/domjudge-ansible-installation/actions/workflows/ansible-lint.yml/badge.svg" alt="CI Status" />
   </a>
   <a href="https://github.com/nathanmartel21/domjudge-ansible-installation/commits/main">
     <img alt="coverage report" src="https://img.shields.io/badge/coverage-unknown-lightgrey" />

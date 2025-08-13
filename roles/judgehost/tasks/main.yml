@@ -220,4 +220,3 @@
   ansible.builtin.command: "systemctl start domjudge-judgedaemon@{{ judgehost_cpu_core }}"
   args:
     chdir: /chroot/domjudge/dev
-

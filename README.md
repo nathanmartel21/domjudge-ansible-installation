@@ -9,14 +9,14 @@
 ---
 
 <p align="center">
-  <a href="https://gitlab.fel.cvut.cz/icpc/one-click-contest/domjudge-ansible-installation/-/commits/main">
-    <img alt="pipeline status" src="https://gitlab.fel.cvut.cz/icpc/one-click-contest/domjudge-ansible-installation/badges/main/pipeline.svg" />
+  <a href="https://github.com/nathanmartel21/domjudge-ansible-installation/commits/main">
+    <img alt="workflow status" src="https://github.com/nathanmartel21/domjudge-ansible-installation/actions/workflows/lint.yml/badge.svg" />
   </a>
-  <a href="https://gitlab.fel.cvut.cz/icpc/one-click-contest/domjudge-ansible-installation/-/commits/main">
-    <img alt="coverage report" src="https://gitlab.fel.cvut.cz/icpc/one-click-contest/domjudge-ansible-installation/badges/main/coverage.svg" />
+  <a href="https://github.com/nathanmartel21/domjudge-ansible-installation/commits/main">
+    <img alt="coverage report" src="https://img.shields.io/badge/coverage-unknown-lightgrey" />
   </a>
-  <a href="https://gitlab.fel.cvut.cz/icpc/one-click-contest/domjudge-ansible-installation/-/commits/main">
-    <img src="https://img.shields.io/gitlab/last-commit/icpc/one-click-contest/domjudge-ansible-installation?gitlab_url=https://gitlab.fel.cvut.cz" alt="Last Commit" />
+  <a href="https://github.com/nathanmartel21/domjudge-ansible-installation/commits/main">
+    <img src="https://img.shields.io/github/last-commit/nathanmartel21/domjudge-ansible-installation" alt="Last Commit" />
   </a>
   <img src="https://img.shields.io/badge/platform-linux-lightgrey?logo=linux" alt="Linux"/>
   <img src="https://img.shields.io/badge/os-debian-a80030?logo=debian&logoColor=white" alt="Debian"/>

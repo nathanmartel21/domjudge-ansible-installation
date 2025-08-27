@@ -77,9 +77,12 @@ msg SUCCESS "db_root_password updated and encrypted"
 read -rp "Do you want to set up a domserver? (y/n): " setup_domserver
 read -rp "Do you want to set up judgehosts? (y/n): " setup_judgehosts
 
+pubkey=$(eval echo "$priv_key")
+
 # Domserver
 [[ "$setup_domserver" == "y" ]] && read -rp "Enter the IP of the domserver: " domserver_ip
 [[ "$setup_domserver" == "y" ]] && { echo "[domserver]" >> "$SCRIPT_DIR/../inventory/hosts.ini"; echo "$domserver_ip" >> "$SCRIPT_DIR/../inventory/hosts.ini"; msg INFO "Domserver IP $domserver_ip added to inventory" ; }
+[[ "$setup_domserver" == "y" ]] && { msg INFO "Copying SSH key to domserver..."; ssh-copy-id -i "$pubkey.pub" "${remote_user}@${domserver_ip}" ; }
 
 # Domserver options
 
@@ -109,6 +112,7 @@ read -rp "Do you want to set up judgehosts? (y/n): " setup_judgehosts
 # Judgehosts
 [[ "$setup_judgehosts" == "y" ]] && read -rp "How many judgehosts? " num_judgehosts
 [[ "$setup_judgehosts" == "y" ]] && { echo "[judgehosts]" >> "$SCRIPT_DIR/../inventory/hosts.ini"; for ((i=1; i<=num_judgehosts; i++)); do read -rp "Enter IP of judgehost #$i: " ip; echo "$ip" >> "$SCRIPT_DIR/../inventory/hosts.ini"; done; msg INFO "Judgehosts added to inventory" ; }
+[[ "$setup_judgehosts" == "y" ]] && { msg INFO "Copying SSH key to judgehosts" ; for ((i=1; i<=num_judgehosts; i++)); do ; ssh-copy-id -i "$pubkey.pub" "${remote_user}@${ip}" ; done ; }
 
 # === Judgehost options ===
 

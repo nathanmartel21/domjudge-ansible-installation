@@ -112,7 +112,13 @@ pubkey=$(eval echo "$priv_key")
 # Judgehosts
 [[ "$setup_judgehosts" == "y" ]] && read -rp "How many judgehosts? " num_judgehosts
 [[ "$setup_judgehosts" == "y" ]] && { echo "[judgehosts]" >> "$SCRIPT_DIR/../inventory/hosts.ini"; for ((i=1; i<=num_judgehosts; i++)); do read -rp "Enter IP of judgehost #$i: " ip; echo "$ip" >> "$SCRIPT_DIR/../inventory/hosts.ini"; done; msg INFO "Judgehosts added to inventory" ; }
-[[ "$setup_judgehosts" == "y" ]] && { msg INFO "Copying SSH key to judgehosts" ; for ((i=1; i<=num_judgehosts; i++)); do ; ssh-copy-id -i "$pubkey.pub" "${remote_user}@${ip}" ; done ; }
+# [[ "$setup_judgehosts" == "y" ]] && { msg INFO "Copying SSH key to judgehosts" ; for ((i=1; i<=num_judgehosts; i++)); do ; ssh-copy-id -i "$pubkey.pub" "${remote_user}@${ip}" ; done ; }
+[[ "$setup_judgehosts" == "y" ]] && {
+    msg INFO "Copying SSH key to judgehosts"
+    for ip in "${judgehost_ips[@]}"; do
+        ssh-copy-id -i "$pubkey.pub" "${remote_user}@${ip}"
+    done
+}
 
 # === Judgehost options ===
 
